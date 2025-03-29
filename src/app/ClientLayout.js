@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
+import Footer from "@/components/layout/Footer";
 import { AppProvider } from "@/context/AppContext";
 
 export default function ClientLayout({ children }) {
@@ -12,6 +13,7 @@ export default function ClientLayout({ children }) {
     <AppProvider>
       <main style={{ color: "var(--text-primary)" }}>
         {children}
+        <Footer />
         <ScrollToTopButton />
       </main>
     </AppProvider>
