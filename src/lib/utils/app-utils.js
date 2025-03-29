@@ -136,7 +136,7 @@ function getFriendlyErrorMessage(error) {
 
   return typeof error === "string"
     ? error
-    : error?.message || "An error occurred. Please try again.";
+    : error?.message || "An error occurred. Please try again later.";
 }
 
 module.exports = {
