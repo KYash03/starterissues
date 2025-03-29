@@ -70,7 +70,7 @@ export default function WelcomeBanner() {
                 </div>
               </div>
             </div>
-            <div className="self-start sm:self-center mt-2 sm:mt-0">
+            <div className="self-start sm:self-center">
               <a
                 href="https://opensource.guide/how-to-contribute/"
                 target="_blank"
