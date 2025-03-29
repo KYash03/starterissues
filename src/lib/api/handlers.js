@@ -3,7 +3,7 @@ const { query, getMetadata } = require("../services/db-service");
 const { buildIssuesQuery } = require("./routes");
 const { getRedisClient } = require("../redis");
 
-const MAX_ISSUES_LIMIT = 50;
+const MAX_ISSUES_LIMIT = 10;
 
 const CACHE_TTL = {
   ISSUES: 300,
