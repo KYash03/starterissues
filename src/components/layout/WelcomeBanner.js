@@ -24,9 +24,9 @@ export default function WelcomeBanner() {
                 Find beginner-friendly GitHub issues
               </h2>
               <div className="space-y-2">
-                <div className="flex items-start">
+                <div className="flex items-center">
                   <svg
-                    className="w-3.5 h-3.5 mt-0.5 mr-2 flex-shrink-0"
+                    className="w-3.5 h-3.5 mr-2 flex-shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -46,9 +46,9 @@ export default function WelcomeBanner() {
                     Filter projects by language, stars, and labels
                   </p>
                 </div>
-                <div className="flex items-start">
+                <div className="flex items-center">
                   <svg
-                    className="w-3.5 h-3.5 mt-0.5 mr-2 flex-shrink-0"
+                    className="w-3.5 h-3.5 mr-2 flex-shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
