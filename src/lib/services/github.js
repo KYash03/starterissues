@@ -39,9 +39,6 @@ const fetchRepoLanguages = async (repoFullName) => {
     );
     return languages ? Object.keys(languages) : [];
   } catch (error) {
-    console.error(
-      `Error fetching languages for ${repoFullName}: ${error.message}`
-    );
     return [];
   }
 };
@@ -235,40 +232,22 @@ async function saveData(repoData, languages, issueData = null, retryCount = 0) {
     });
   } catch (error) {
     if (error.message.includes("deadlock detected") && retryCount < 3) {
-      console.warn(
-        `Deadlock detected, retrying (attempt ${retryCount + 1}) for repo: ${
-          repoData.full_name
-        }`
-      );
       await sleep(500 * Math.pow(2, retryCount));
       return saveData(repoData, languages, issueData, retryCount + 1);
     }
-    console.error(
-      `Error in saveData for repo ${repoData.full_name}: ${error.message}`
-    );
     throw error;
   }
 }
 
 async function executeGitHubOperation(operationName, operation) {
-  console.log(`Starting operation: ${operationName}`);
   try {
     await updateMetadata(operationName);
     const result = await operation();
-    console.log(
-      `Finished operation: ${operationName}. Processed: ${result.processed}, Errors: ${result.errors.length}`
-    );
     return await finishOperation(result);
   } catch (error) {
-    console.error(
-      `Operation ${operationName} failed critically: ${error.message}`,
-      error.stack
-    );
     try {
       await updateMetadata("error", error.message);
-    } catch (metaError) {
-      console.error("Failed to update metadata:", metaError);
-    }
+    } catch (metaError) {}
     return {
       success: false,
       error: error.message,
@@ -296,11 +275,8 @@ async function refreshExistingIssues(ageInDays = 2, batchSizeParam = 30) {
     `);
 
     if (staleIssues.length === 0) {
-      console.log("No stale issues found to refresh.");
       return { processed: 0, errors: [], updatedCount: 0 };
     }
-
-    console.log(`Found ${staleIssues.length} stale issues to refresh.`);
 
     return processBatch(staleIssues, async (issue) => {
       const repoFullName = issue.repo_full_name;
@@ -324,9 +300,6 @@ async function refreshExistingIssues(ageInDays = 2, batchSizeParam = 30) {
       ]);
 
       if (!issueData || !repoData) {
-        console.warn(
-          `Issue ${repoFullName}#${issueNumber} or repo ${repoFullName} not found or inaccessible. Skipping.`
-        );
         throw new Error(
           `Issue or repo not found/inaccessible (API returned null/404)`
         );
@@ -351,10 +324,7 @@ async function refreshGitHubData() {
           `UPDATE issues SET is_good_first_issue = FALSE WHERE state != 'open' AND is_good_first_issue = TRUE`
         )
       );
-      console.log("Marked non-open issues as not 'good first issue'.");
-    } catch (cleanupError) {
-      console.error("Error during initial issue cleanup:", cleanupError);
-    }
+    } catch (cleanupError) {}
 
     const stats = { processed: 0, errors: [], updatedCount: 0 };
     const processedIssueIds = new Set();
@@ -365,7 +335,6 @@ async function refreshGitHubData() {
       page <= MAX_PAGES && stats.processed < MAX_ITEMS_OVERALL;
       page++
     ) {
-      console.log(`Fetching page ${page} of search results...`);
       try {
         const searchResult = await searchIssues({
           q: searchQuery,
@@ -377,12 +346,8 @@ async function refreshGitHubData() {
 
         const issues = searchResult?.items;
         if (!issues || issues.length === 0) {
-          console.log(`No more issues found on page ${page}.`);
           break;
         }
-        console.log(
-          `Found ${issues.length} issues on page ${page}. Total possible: ${searchResult.total_count}`
-        );
 
         const issuesToProcess = [];
         const repoUrlsToFetch = new Map();
@@ -398,13 +363,9 @@ async function refreshGitHubData() {
         }
 
         if (issuesToProcess.length === 0 && repoUrlsToFetch.size === 0) {
-          console.log("No new issues to process on this page.");
           continue;
         }
 
-        console.log(
-          `Fetching ${repoUrlsToFetch.size} unique repositories for page ${page}...`
-        );
         const repoFetchPromises = Array.from(repoUrlsToFetch.keys()).map(
           async (repoUrl) => {
             try {
@@ -415,9 +376,6 @@ async function refreshGitHubData() {
                 repoUrlsToFetch.delete(repoUrl);
               }
             } catch (repoError) {
-              console.warn(
-                `Failed to fetch repo ${repoUrl}: ${repoError.message}`
-              );
               repoUrlsToFetch.delete(repoUrl);
               stats.errors.push({
                 id: `repo:${repoUrl}`,
@@ -427,11 +385,6 @@ async function refreshGitHubData() {
           }
         );
         await Promise.all(repoFetchPromises);
-        console.log(
-          `Fetched ${
-            Array.from(repoUrlsToFetch.values()).filter(Boolean).length
-          } repositories successfully.`
-        );
 
         const finalIssuesForBatch = issuesToProcess.filter((issue) => {
           const repoData = repoUrlsToFetch.get(issue.repository_url);
@@ -445,15 +398,8 @@ async function refreshGitHubData() {
         });
 
         if (finalIssuesForBatch.length === 0) {
-          console.log(
-            "No issues met the criteria after filtering on page " + page
-          );
           continue;
         }
-
-        console.log(
-          `Processing batch of ${finalIssuesForBatch.length} issues for page ${page}...`
-        );
 
         const batchResults = await processBatch(
           finalIssuesForBatch,
@@ -476,14 +422,7 @@ async function refreshGitHubData() {
         stats.updatedCount += batchResults.updatedCount;
         stats.errors.push(...batchResults.errors);
 
-        console.log(
-          `Page ${page} processed. Total processed so far: ${stats.processed}. Errors: ${batchResults.errors.length}`
-        );
-
         if (stats.processed >= MAX_ITEMS_OVERALL) {
-          console.log(
-            `Reached maximum processing limit (${MAX_ITEMS_OVERALL}). Stopping.`
-          );
           break;
         }
 
@@ -491,27 +430,16 @@ async function refreshGitHubData() {
           ? Math.ceil(Math.min(searchResult.total_count, 1000) / 100)
           : MAX_PAGES;
         if (page >= maxPagesFromTotal) {
-          console.log("Processed all available pages based on total count.");
           break;
         }
       } catch (error) {
-        console.error(
-          `Error processing page ${page}: ${error.message}`,
-          error.stack
-        );
         stats.errors.push({ type: "page_error", page, error: error.message });
         if (error.message.includes("rate limit")) {
-          console.warn(
-            "Rate limit likely hit. Pausing before potential next page..."
-          );
           await sleep(5000);
         }
       }
     }
 
-    console.log(
-      `Refresh GitHub data finished. Total processed: ${stats.processed}, Total updated: ${stats.updatedCount}`
-    );
     return stats;
   });
 }

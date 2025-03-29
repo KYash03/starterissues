@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { buildQueryParams } from "@/lib/api/client";
 import { handleApiError } from "@/lib/utils/app-utils";
 import { STAR_FILTERS } from "@/lib/constants/app";
@@ -19,6 +20,34 @@ export const INITIAL_FILTERS = {
   bookmarkedOnly: false,
 };
 
+function compareFilterValue(value1, value2) {
+  if (Array.isArray(value1) && Array.isArray(value2)) {
+    if (value1.length !== value2.length) {
+      return false;
+    }
+    const sorted1 = [...value1].sort();
+    const sorted2 = [...value2].sort();
+    return JSON.stringify(sorted1) === JSON.stringify(sorted2);
+  }
+  return value1 === value2;
+}
+
+function areFiltersEqual(filters1, filters2) {
+  if (!filters1 || !filters2) {
+    return filters1 === filters2;
+  }
+
+  const keys = Object.keys(INITIAL_FILTERS);
+
+  for (const key of keys) {
+    if (!compareFilterValue(filters1[key], filters2[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const validateAndNormalizeFilters = (newFilters, currentFilters) => {
   const result = { ...currentFilters };
   Object.entries(newFilters).forEach(([key, value]) => {
@@ -29,11 +58,27 @@ const validateAndNormalizeFilters = (newFilters, currentFilters) => {
       case "excludedRepositories":
       case "labels":
       case "excludedLabels":
-        result[key] = Array.isArray(value) ? value : [];
+      case "bookmarkIds":
+        result[key] = Array.isArray(value)
+          ? value.filter((v) => v != null)
+          : [];
+        break;
+      case "sortBy":
+        result.sortBy =
+          typeof value === "string" ? value : INITIAL_FILTERS.sortBy;
+        break;
+      case "sortOrder":
+        result.sortOrder =
+          typeof value === "string" &&
+          ["asc", "desc"].includes(value.toLowerCase())
+            ? value.toLowerCase()
+            : INITIAL_FILTERS.sortOrder;
         break;
       case "minStars": {
         const minStars = parseInt(value, 10);
-        result.minStars = isNaN(minStars) ? 0 : Math.max(0, minStars);
+        result.minStars = isNaN(minStars)
+          ? STAR_FILTERS.DEFAULT_MIN_STARS
+          : Math.max(STAR_FILTERS.DEFAULT_MIN_STARS, minStars);
         if (
           result.maxStars !== STAR_FILTERS.DEFAULT_MAX_STARS &&
           result.minStars > result.maxStars
@@ -47,39 +92,147 @@ const validateAndNormalizeFilters = (newFilters, currentFilters) => {
           result.maxStars = STAR_FILTERS.DEFAULT_MAX_STARS;
         } else {
           const maxStars = parseInt(value, 10);
-          result.maxStars = isNaN(maxStars)
-            ? STAR_FILTERS.DEFAULT_MAX_STARS
-            : Math.max(0, maxStars);
-          if (result.minStars > result.maxStars) {
+          result.maxStars =
+            isNaN(maxStars) || maxStars < 0
+              ? STAR_FILTERS.DEFAULT_MAX_STARS
+              : Math.max(0, maxStars);
+          if (
+            result.minStars > result.maxStars &&
+            result.maxStars !== STAR_FILTERS.DEFAULT_MAX_STARS
+          ) {
+            result.maxStars = Math.max(result.minStars, result.maxStars);
+          } else if (result.minStars > result.maxStars) {
             result.minStars = result.maxStars;
           }
         }
         break;
       }
       case "noAssignee":
-        result.noAssignee = Boolean(value);
+      case "bookmarkedOnly":
+        result[key] = value === true || value === "true";
+        break;
+      case "limit":
+      case "cursor":
+      case "cursorId":
         break;
       default:
-        result[key] = value;
+        break;
     }
   });
+  if (
+    result.maxStars !== STAR_FILTERS.DEFAULT_MAX_STARS &&
+    result.minStars > result.maxStars
+  ) {
+    result.maxStars = result.minStars;
+  }
+  if (result.minStars < STAR_FILTERS.DEFAULT_MIN_STARS) {
+    result.minStars = STAR_FILTERS.DEFAULT_MIN_STARS;
+  }
+
   return result;
 };
 
-export function useFilters(initialFilters = {}) {
+const parseFiltersFromParams = (searchParams) => {
+  if (!searchParams) return INITIAL_FILTERS;
+
+  const getArrayParam = (key) =>
+    searchParams.getAll(`${key}[]`).filter((v) => v);
+  const getStringParam = (key, defaultValue) =>
+    searchParams.get(key) || defaultValue;
+  const getBoolParam = (key, defaultValue) =>
+    searchParams.get(key) === "true"
+      ? true
+      : searchParams.get(key) === "false"
+      ? false
+      : defaultValue;
+  const getIntParam = (key, defaultValue) => {
+    const val = searchParams.get(key);
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  };
+
+  const rawFilters = {
+    languages: getArrayParam("languages"),
+    excludedLanguages: getArrayParam("excludedLanguages"),
+    labels: getArrayParam("labels"),
+    excludedLabels: getArrayParam("excludedLabels"),
+    repositories: getArrayParam("repositories"),
+    excludedRepositories: getArrayParam("excludedRepositories"),
+    sortBy: getStringParam("sortBy", undefined),
+    sortOrder: getStringParam("sortOrder", undefined),
+    noAssignee: searchParams.has("noAssignee")
+      ? getBoolParam("noAssignee", false)
+      : undefined,
+    minStars: searchParams.has("minStars")
+      ? getIntParam("minStars", undefined)
+      : undefined,
+    maxStars: searchParams.has("maxStars")
+      ? getIntParam("maxStars", undefined)
+      : undefined,
+    bookmarkedOnly: searchParams.has("bookmarkedOnly")
+      ? getBoolParam("bookmarkedOnly", false)
+      : undefined,
+  };
+
+  const definedFilters = Object.fromEntries(
+    Object.entries(rawFilters).filter(([_, v]) => v !== undefined)
+  );
+
+  return validateAndNormalizeFilters(definedFilters, INITIAL_FILTERS);
+};
+
+export function useFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const debouncedTimerRef = useRef(null);
   const isUpdatingRef = useRef(false);
-  const [filters, setFilters] = useState({
-    ...INITIAL_FILTERS,
-    ...initialFilters,
+  const firstRender = useRef(true);
+
+  const [filters, setFilters] = useState(() => {
+    return parseFiltersFromParams(searchParams);
   });
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+
+    if (isUpdatingRef.current) return;
+
+    const paramsToSync = {};
+    for (const key in filters) {
+      if (
+        Object.hasOwnProperty.call(filters, key) &&
+        Object.hasOwnProperty.call(INITIAL_FILTERS, key)
+      ) {
+        if (!compareFilterValue(filters[key], INITIAL_FILTERS[key])) {
+          paramsToSync[key] = filters[key];
+        }
+      }
+    }
+
+    const newQueryString = buildQueryParams(paramsToSync).toString();
+    const currentQueryString = searchParams.toString();
+
+    if (newQueryString !== currentQueryString) {
+      router.replace(
+        `${pathname}${newQueryString ? "?" + newQueryString : ""}`,
+        { scroll: false }
+      );
+    }
+  }, [filters, router, pathname, searchParams]);
 
   const updateFilters = useCallback((newFilters) => {
     if (isUpdatingRef.current) return;
     isUpdatingRef.current = true;
+
     if (debouncedTimerRef.current) {
       clearTimeout(debouncedTimerRef.current);
     }
+
     debouncedTimerRef.current = setTimeout(() => {
       setFilters((prevFilters) => {
         const updatedFilters = validateAndNormalizeFilters(
@@ -87,9 +240,12 @@ export function useFilters(initialFilters = {}) {
           prevFilters
         );
         isUpdatingRef.current = false;
+        if (areFiltersEqual(prevFilters, updatedFilters)) {
+          return prevFilters;
+        }
         return updatedFilters;
       });
-    }, 200);
+    }, 300);
   }, []);
 
   const resetFilters = useCallback(() => {
@@ -97,26 +253,37 @@ export function useFilters(initialFilters = {}) {
       clearTimeout(debouncedTimerRef.current);
     }
     isUpdatingRef.current = false;
-    setFilters(INITIAL_FILTERS);
+    setFilters((prevFilters) => {
+      if (areFiltersEqual(prevFilters, INITIAL_FILTERS)) {
+        return prevFilters;
+      }
+      return INITIAL_FILTERS;
+    });
   }, []);
 
   const getActiveFilterCount = useCallback(() => {
     let count = 0;
-    if (filters.languages?.length > 0) count++;
-    if (filters.excludedLanguages?.length > 0) count++;
-    if (filters.repositories?.length > 0) count++;
-    if (filters.excludedRepositories?.length > 0) count++;
-    if (filters.labels?.length > 0) count++;
-    if (filters.excludedLabels?.length > 0) count++;
-    if (
-      filters.minStars !== STAR_FILTERS.DEFAULT_MIN_STARS ||
-      filters.maxStars !== STAR_FILTERS.DEFAULT_MAX_STARS
-    )
-      count++;
-    if (filters.noAssignee) count++;
-    if (filters.bookmarkedOnly) count++;
+    const keys = Object.keys(INITIAL_FILTERS);
+    for (const key of keys) {
+      if (!compareFilterValue(filters[key], INITIAL_FILTERS[key])) {
+        if (Array.isArray(filters[key]) && filters[key].length === 0) {
+          continue;
+        }
+        count++;
+      }
+    }
     return count;
   }, [filters]);
+
+  useEffect(() => {
+    const filtersFromCurrentUrl = parseFiltersFromParams(searchParams);
+    setFilters((prevFilters) => {
+      if (!areFiltersEqual(prevFilters, filtersFromCurrentUrl)) {
+        return filtersFromCurrentUrl;
+      }
+      return prevFilters;
+    });
+  }, [searchParams]);
 
   return {
     filters,
@@ -126,88 +293,22 @@ export function useFilters(initialFilters = {}) {
   };
 }
 
-export function useIssues(initialFilters = {}) {
+export function useIssues() {
   const { filters, updateFilters, resetFilters, getActiveFilterCount } =
-    useFilters(initialFilters);
+    useFilters();
   const { bookmarkIds } = useAppContext();
-
   const [state, setState] = useState({
     issues: [],
-    pendingIssues: [],
     loading: true,
     error: null,
     isFiltering: false,
-    pagination: {
-      limit: 10,
-      total: 0,
-      hasMore: false,
-      nextCursor: null,
-    },
+    pagination: { limit: 10, total: 0, hasMore: false, nextCursor: null },
   });
-
   const abortControllerRef = useRef(null);
   const requestIdRef = useRef(0);
   const isFirstLoad = useRef(true);
   const [isRetrying, setIsRetrying] = useState(false);
-  const shouldResetPagination = useRef(false);
-  const prevFiltersRef = useRef(filters);
-  const prevBookmarkedOnlyRef = useRef(filters.bookmarkedOnly);
   const bookmarkIdsRef = useRef(bookmarkIds);
-
-  useEffect(() => {
-    const previousIds = bookmarkIdsRef.current;
-    bookmarkIdsRef.current = bookmarkIds;
-
-    if (filters.bookmarkedOnly && !isFirstLoad.current) {
-      if (bookmarkIds.length < previousIds.length && bookmarkIds.length > 0) {
-        const removedId = previousIds.find((id) => !bookmarkIds.includes(id));
-
-        setState((prevState) => {
-          const updatedIssues = prevState.issues.filter(
-            (issue) => issue.github_id !== removedId
-          );
-
-          return {
-            ...prevState,
-            issues: updatedIssues,
-            isFiltering: false,
-            pagination: {
-              ...prevState.pagination,
-              total: Math.max(0, prevState.pagination.total - 1),
-              hasMore:
-                updatedIssues.length === 0
-                  ? false
-                  : prevState.pagination.hasMore,
-            },
-          };
-        });
-      } else if (bookmarkIds.length === 0 && previousIds.length > 0) {
-        setState((prevState) => ({
-          ...prevState,
-          issues: [],
-          loading: true,
-          isFiltering: true,
-          error: null,
-          pagination: {
-            ...prevState.pagination,
-            total: 0,
-            hasMore: false,
-            nextCursor: null,
-          },
-        }));
-        requestIdRef.current++;
-        setTimeout(() => fetchIssues(), 0);
-      } else if (bookmarkIds.length > previousIds.length) {
-        requestIdRef.current++;
-        setState((prev) => ({
-          ...prev,
-          loading: true,
-          isFiltering: true,
-        }));
-        fetchIssues();
-      }
-    }
-  }, [bookmarkIds, filters.bookmarkedOnly]);
 
   const fetchIssues = useCallback(
     async (cursor = null) => {
@@ -229,20 +330,17 @@ export function useIssues(initialFilters = {}) {
         return;
       }
 
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
+      if (abortControllerRef.current) abortControllerRef.current.abort();
       const thisRequestId = ++requestIdRef.current;
       abortControllerRef.current = new AbortController();
       const isInitialFetch = cursor === null;
-      const isFilterOperation = !isFirstLoad.current && isInitialFetch;
+      const isFilterOperation = isInitialFetch && !isFirstLoad.current;
 
       setState((prev) => ({
         ...prev,
         loading: true,
         isFiltering: isFilterOperation,
-        ...(isInitialFetch ? { error: null } : {}),
+        ...(isInitialFetch ? { issues: [], error: null } : {}),
       }));
 
       try {
@@ -254,13 +352,11 @@ export function useIssues(initialFilters = {}) {
           limit: state.pagination.limit,
           ...(cursor && { cursor: cursor.cursor, cursorId: cursor.cursorId }),
         });
-
         const response = await fetch(`/api/issues?${queryParams}`, {
           signal: abortControllerRef.current.signal,
         });
 
         if (thisRequestId !== requestIdRef.current) return;
-
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(
@@ -270,7 +366,6 @@ export function useIssues(initialFilters = {}) {
 
         const { issues: newIssues, pagination: paginationData } =
           await response.json();
-
         if (thisRequestId !== requestIdRef.current) return;
 
         setState((prevState) => {
@@ -291,34 +386,47 @@ export function useIssues(initialFilters = {}) {
             },
           };
         });
-
-        isFirstLoad.current = false;
+        if (isInitialFetch) isFirstLoad.current = false;
       } catch (err) {
+        if (err.name === "AbortError") {
+          if (thisRequestId === requestIdRef.current)
+            setState((prev) => ({
+              ...prev,
+              loading: false,
+              isFiltering: false,
+            }));
+          return;
+        }
         if (thisRequestId !== requestIdRef.current) return;
 
         const errorMessage = handleApiError(
           filters.bookmarkedOnly ? "Bookmarked Issues" : "Issues",
           err,
-          {
-            filters,
-            pagination: { limit: state.pagination.limit, cursor },
-          }
+          { filters, pagination: { limit: state.pagination.limit, cursor } }
         );
-
-        if (errorMessage) {
+        if (errorMessage)
           setState((prevState) => ({
             ...prevState,
+            issues: isInitialFetch ? [] : prevState.issues,
             error: errorMessage,
             loading: false,
             isFiltering: false,
           }));
-        }
-
-        isFirstLoad.current = false;
+        else
+          setState((prev) => ({ ...prev, loading: false, isFiltering: false }));
+        if (isInitialFetch) isFirstLoad.current = false;
       }
     },
     [filters, state.pagination.limit]
   );
+
+  useEffect(() => {
+    fetchIssues();
+    return () => {
+      requestIdRef.current++;
+      abortControllerRef.current?.abort();
+    };
+  }, [fetchIssues]);
 
   const loadMore = useCallback(() => {
     if (
@@ -337,106 +445,26 @@ export function useIssues(initialFilters = {}) {
 
   const refreshIssues = useCallback(async () => {
     setIsRetrying(true);
+    isFirstLoad.current = true;
     try {
-      fetchIssues();
+      await fetchIssues();
     } finally {
       setIsRetrying(false);
     }
   }, [fetchIssues]);
 
-  const handleFilterReset = useCallback(() => {
-    requestIdRef.current++;
-    resetFilters();
-
-    setState((prev) => ({
-      ...prev,
-      loading: true,
-      isFiltering: true,
-      error: null,
-      pagination: {
-        ...prev.pagination,
-        total: 0,
-        hasMore: false,
-        nextCursor: null,
-      },
-    }));
-  }, [resetFilters]);
-
-  const handleFilterUpdate = useCallback(
-    (newFilters) => {
-      requestIdRef.current++;
-      updateFilters(newFilters);
-
-      setState((prev) => ({
-        ...prev,
-        issues: [],
-        loading: true,
-        isFiltering: true,
-        error: null,
-        pagination: {
-          ...prev.pagination,
-          total: 0,
-          hasMore: false,
-          nextCursor: null,
-        },
-      }));
-    },
-    [updateFilters]
-  );
-
   useEffect(() => {
-    const filterChanged =
-      JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
-    const bookmarkedOnlyChanged =
-      prevBookmarkedOnlyRef.current !== filters.bookmarkedOnly;
-    prevFiltersRef.current = filters;
-    prevBookmarkedOnlyRef.current = filters.bookmarkedOnly;
-
-    if (isFirstLoad.current) return;
-
-    if (filterChanged) {
-      shouldResetPagination.current = true;
-      requestIdRef.current++;
-
-      setState((prev) => ({
-        ...prev,
-        issues: [],
-        loading: true,
-        isFiltering: true,
-        error: null,
-        pagination: {
-          ...prev.pagination,
-          total: 0,
-          hasMore: false,
-          nextCursor: null,
-        },
-      }));
-
-      const currentRequestId = requestIdRef.current;
-      setTimeout(() => {
-        if (currentRequestId === requestIdRef.current) {
-          fetchIssues();
-        }
-      }, 10);
+    const previousIds = bookmarkIdsRef.current;
+    bookmarkIdsRef.current = bookmarkIds;
+    if (filters.bookmarkedOnly && !isFirstLoad.current) {
+      if (
+        JSON.stringify(previousIds.sort()) !==
+        JSON.stringify(bookmarkIds.sort())
+      ) {
+        fetchIssues();
+      }
     }
-  }, [filters, fetchIssues]);
-
-  useEffect(() => {
-    const currentRequestId = requestIdRef.current;
-    const timer = setTimeout(
-      () => {
-        if (currentRequestId === requestIdRef.current) {
-          fetchIssues();
-        }
-      },
-      isFirstLoad.current ? 0 : 0
-    );
-
-    return () => {
-      clearTimeout(timer);
-      abortControllerRef.current?.abort();
-    };
-  }, [fetchIssues]);
+  }, [bookmarkIds, filters.bookmarkedOnly, fetchIssues]);
 
   useEffect(() => {
     return () => {
@@ -452,8 +480,8 @@ export function useIssues(initialFilters = {}) {
     error: state.error,
     pagination: state.pagination,
     filters,
-    updateFilters: handleFilterUpdate,
-    resetFilters: handleFilterReset,
+    updateFilters,
+    resetFilters,
     loadMore,
     refreshIssues,
     isRetrying,

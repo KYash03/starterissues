@@ -57,7 +57,6 @@ async function handleApiRequest(request, context, requiresCSRF = false) {
     try {
       rateLimitResult = await rateLimit(request, route);
     } catch (rateLimitError) {
-      console.error(`Rate limiting error: ${rateLimitError.message}`);
       return NextResponse.json(
         { error: "Rate limiting service unavailable" },
         { status: 500 }
@@ -88,7 +87,6 @@ async function handleApiRequest(request, context, requiresCSRF = false) {
 
     return response;
   } catch (error) {
-    console.error(`API error for route ${route}:`, error);
     return NextResponse.json(
       { error: "An unexpected error occurred. Please try again." },
       { status: 500 }
