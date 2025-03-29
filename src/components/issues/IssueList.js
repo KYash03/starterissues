@@ -8,7 +8,6 @@ const MemoizedIssueCard = memo(IssueCard);
 
 const LoadMoreButton = memo(({ loading, hasMore, onClick }) => {
   if (!hasMore) return null;
-
   return (
     <div className="flex justify-center" style={{ minHeight: "36px" }}>
       {loading ? (
@@ -31,7 +30,6 @@ const LoadMoreButton = memo(({ loading, hasMore, onClick }) => {
 
 const LoadingIndicator = ({ size = "lg" }) => {
   const isSmall = size === "sm";
-
   return (
     <div
       className={`flex justify-center items-center ${
@@ -109,19 +107,18 @@ const IssueList = ({
     );
   }
 
-  const contentStyle = isFiltering
-    ? {
-        transition: "filter 0.15s ease, opacity 0.15s ease",
-        pointerEvents: "none",
-      }
-    : {
-        transition: "filter 0.15s ease, opacity 0.15s ease",
-      };
+  const contentStyle = {
+    transition: "filter 0.15s ease, opacity 0.15s ease",
+    ...(isFiltering && {
+      filter: "blur(1px)",
+      opacity: 0.7,
+      pointerEvents: "none",
+    }),
+  };
 
   return (
     <div aria-live="polite" aria-busy={loading}>
       {isFiltering && <FilteringIndicator />}
-
       {isInitialLoad ? (
         <LoadingIndicator size="lg" />
       ) : (
@@ -136,10 +133,9 @@ const IssueList = ({
               <MemoizedIssueCard key={issue.github_id} issue={issue} />
             ))}
           </div>
-
-          {pagination.hasMore && (
+          {!isInitialLoad && !isFiltering && pagination.hasMore && (
             <LoadMoreButton
-              loading={loading && !isFiltering}
+              loading={loading}
               hasMore={pagination.hasMore}
               onClick={onLoadMore}
             />
