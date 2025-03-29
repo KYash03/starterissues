@@ -80,7 +80,7 @@ export async function rateLimit(request, route = "default") {
       return {
         success: false,
         status: 429,
-        message: "Too many requests, please try again.",
+        message: "Too many requests, please try again later.",
         headers: {
           "Retry-After": ttl.toString(),
           "X-RateLimit-Limit": limit.toString(),
