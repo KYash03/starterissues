@@ -129,7 +129,7 @@ function getFriendlyErrorMessage(error) {
   const message = typeof error === "string" ? error : error?.message || "";
 
   if (message.match(/network|connect|abort/i))
-    return "Network connection issue. Please check your internet connection.";
+    return "Network connection issue.";
   if (message.includes("timeout")) return "Request timed out.";
   if (message.match(/unauthorized|401/i))
     return "Authentication failed. Please try again.";
