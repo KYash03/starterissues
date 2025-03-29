@@ -10,10 +10,7 @@ const LoadMoreButton = memo(({ loading, hasMore, onClick }) => {
   if (!hasMore) return null;
 
   return (
-    <div
-      className="flex justify-center mt-6 mb-2"
-      style={{ minHeight: "36px" }}
-    >
+    <div className="flex justify-center" style={{ minHeight: "36px" }}>
       {loading ? (
         <div className="py-1">
           <Spinner size="lg" className="text-[var(--element-active)]" />
@@ -128,11 +125,9 @@ const IssueList = ({
       {isInitialLoad ? (
         <LoadingIndicator size="lg" />
       ) : (
-        <>
+        <div className="space-y-6 mb-6">
           <div
-            className={`grid grid-cols-1 gap-4 staggered-animation ${
-              !pagination.hasMore ? "mb-8" : ""
-            }`}
+            className="grid grid-cols-1 gap-4 staggered-animation"
             role="feed"
             aria-label="GitHub Issues"
             style={contentStyle}
@@ -142,12 +137,14 @@ const IssueList = ({
             ))}
           </div>
 
-          <LoadMoreButton
-            loading={loading && !isFiltering}
-            hasMore={pagination.hasMore}
-            onClick={onLoadMore}
-          />
-        </>
+          {pagination.hasMore && (
+            <LoadMoreButton
+              loading={loading && !isFiltering}
+              hasMore={pagination.hasMore}
+              onClick={onLoadMore}
+            />
+          )}
+        </div>
       )}
     </div>
   );

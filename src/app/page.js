@@ -33,7 +33,7 @@ export default function Home() {
       <div id="main-content">
         <WelcomeBanner />
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <FilterBar
             filters={filters}
             onFilterChange={updateFilters}
