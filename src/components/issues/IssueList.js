@@ -107,15 +107,6 @@ const IssueList = ({
     );
   }
 
-  const contentStyle = {
-    transition: "filter 0.15s ease, opacity 0.15s ease",
-    ...(isFiltering && {
-      filter: "blur(1px)",
-      opacity: 0.7,
-      pointerEvents: "none",
-    }),
-  };
-
   return (
     <div aria-live="polite" aria-busy={loading}>
       {isFiltering && <FilteringIndicator />}
@@ -127,7 +118,6 @@ const IssueList = ({
             className="grid grid-cols-1 gap-4 staggered-animation"
             role="feed"
             aria-label="GitHub Issues"
-            style={contentStyle}
           >
             {issues.map((issue) => (
               <MemoizedIssueCard key={issue.github_id} issue={issue} />
