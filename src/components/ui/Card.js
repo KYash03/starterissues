@@ -46,7 +46,7 @@ export default function Card({
 
     return (
       <Component
-        className={`${cardClasses} my-6 flex flex-col items-center justify-center text-center py-16 px-4 animate-scale-fade`}
+        className={`${cardClasses} my-6 flex flex-col items-center justify-center text-center py-16 px-4`}
         style={baseStyle}
         role="status"
         aria-live="polite"
@@ -99,7 +99,7 @@ export default function Card({
 
     return (
       <Component
-        className={`${cardClasses} my-6 bg-red-900/20 border border-red-800/50 p-5 sm:p-6 animate-scale-fade`}
+        className={`${cardClasses} my-6 bg-red-900/20 border border-red-800/50 p-5 sm:p-6`}
         style={{
           ...baseStyle,
           backgroundColor: "var(--text-danger-light)",

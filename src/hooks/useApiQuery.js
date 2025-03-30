@@ -340,7 +340,9 @@ export function useIssues() {
         ...prev,
         loading: true,
         isFiltering: isFilterOperation,
-        ...(isInitialFetch ? { issues: [], error: null } : {}),
+        ...(isInitialFetch && !isFilterOperation
+          ? { issues: [], error: null }
+          : {}),
       }));
 
       try {
