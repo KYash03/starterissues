@@ -1,6 +1,6 @@
 # Starter Issues
 
-This is a web app that helps people find beginner-friendly GitHub issues to work on.
+This is a website that helps people find beginner-friendly GitHub issues to work on.
 
 **[Visit Starter Issues →](https://starterissues.com)**
 
