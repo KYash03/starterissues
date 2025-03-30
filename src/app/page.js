@@ -9,23 +9,6 @@ import WelcomeBanner from "@/components/layout/WelcomeBanner";
 import FilterBar from "@/components/filters/FilterBar";
 import IssueList from "@/components/issues/IssueList";
 import Card from "@/components/ui/Card";
-import { Spinner } from "@/components/ui/Icons";
-
-function IssuesLoadingFallback() {
-  return (
-    <div className="flex flex-col items-center justify-center py-10">
-      <div className="flex items-center gap-3 p-4 rounded-lg border bg-theme-card border-theme">
-        <Spinner size="sm" className="text-[var(--element-active)]" />
-        <span
-          className="text-sm font-medium"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Loading issues and filters...
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function IssuesContent() {
   const {
@@ -88,7 +71,7 @@ export default function Home() {
       <div id="main-content">
         <WelcomeBanner />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <Suspense fallback={<IssuesLoadingFallback />}>
+          <Suspense>
             <IssuesContent />
           </Suspense>
         </div>
