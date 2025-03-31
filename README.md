@@ -25,7 +25,7 @@ I built it with:
 - GitHub API to fetch issue data
 - AWS Amplify for hosting
 
-The app also refreshes data every 6 hours and removes all closed issues automatically.
+The app also refreshes data every hour and removes all closed issues automatically.
 
 ## Contributing
 

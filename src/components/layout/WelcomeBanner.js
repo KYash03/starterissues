@@ -65,7 +65,7 @@ export default function WelcomeBanner() {
                     className="text-sm"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    New issues added every 6 hours
+                    New issues added every hour
                   </p>
                 </div>
               </div>
