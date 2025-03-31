@@ -2,12 +2,12 @@ import React from "react";
 
 export default function Footer() {
   return (
-    <footer className="pb-5">
+    <footer
+      className="pb-5 border-t"
+      style={{ borderColor: "var(--border-card)" }}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div
-          className="border-t pt-5"
-          style={{ borderColor: "var(--border-card)" }}
-        >
+        <div className="pt-5">
           <div className="flex items-center justify-between">
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
               Made with
