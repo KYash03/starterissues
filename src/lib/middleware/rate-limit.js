@@ -2,13 +2,13 @@ import { getRedisClient } from "../redis";
 import crypto from "crypto";
 
 const rateLimitConfigs = {
-  default: { points: 35, duration: 60 },
-  issues: { points: 15, duration: 60 },
-  metadata: { points: 65, duration: 60 },
-  "filter-options": { points: 25, duration: 60 },
+  default: { points: 50, duration: 60 },
+  issues: { points: 25, duration: 60 },
+  metadata: { points: 100, duration: 60 },
+  "filter-options": { points: 40, duration: 60 },
 };
 
-const globalRateLimit = { points: 75, duration: 60 };
+const globalRateLimit = { points: 120, duration: 60 };
 
 function getClientIp(request) {
   const cfIp = request.headers.get("cf-connecting-ip");
