@@ -108,7 +108,7 @@ const IssueList = ({
   }
 
   return (
-    <div aria-live="polite" aria-busy={loading}>
+    <div aria-live="polite" aria-busy={loading} className={isFiltering ? "is-filtering" : ""}>
       {isFiltering && <FilteringIndicator />}
       {isInitialLoad ? (
         <LoadingIndicator size="lg" />

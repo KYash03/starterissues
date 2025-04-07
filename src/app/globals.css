@@ -247,6 +247,26 @@ body {
   }
 }
 
+@keyframes blur-transition {
+  0% {
+    filter: blur(0);
+  }
+  50% {
+    filter: blur(2px);
+  }
+  100% {
+    filter: blur(0);
+  }
+}
+
+.filter-transition {
+  transition: filter 0.3s ease-out;
+}
+
+.is-filtering .filter-transition {
+  animation: blur-transition 0.7s ease-out;
+}
+
 .bookmark-icon {
   transition: transform 0.2s ease-out;
 }

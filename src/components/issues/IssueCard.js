@@ -68,7 +68,7 @@ export default function IssueCard({ issue }) {
   }, [labels, label_colors]);
 
   return (
-    <Card className="animate-scale-fade">
+    <Card className="animate-scale-fade filter-transition">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <h3
           className="text-base font-semibold w-full"
