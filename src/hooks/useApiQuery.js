@@ -315,18 +315,27 @@ export function useIssues() {
       if (filters.bookmarkedOnly && bookmarkIdsRef.current.length === 0) {
         setState((prev) => ({
           ...prev,
-          issues: [],
-          loading: false,
-          isFiltering: false,
-          error: null,
-          pagination: {
-            ...prev.pagination,
-            total: 0,
-            hasMore: false,
-            nextCursor: null,
-          },
+          loading: true,
+          isFiltering: true,
         }));
-        isFirstLoad.current = false;
+
+        setTimeout(() => {
+          setState((prev) => ({
+            ...prev,
+            issues: [],
+            loading: false,
+            isFiltering: false,
+            error: null,
+            pagination: {
+              ...prev.pagination,
+              total: 0,
+              hasMore: false,
+              nextCursor: null,
+            },
+          }));
+          isFirstLoad.current = false;
+        }, 500);
+
         return;
       }
 
