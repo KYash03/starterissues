@@ -237,12 +237,10 @@ async function executeScript(operationName, mainFunction) {
 
 module.exports = {
   getPool,
-  closePool,
   query,
   executeQuery,
   transaction,
   updateMetadata,
   getMetadata,
-  initializeDatabase,
   executeScript,
 };

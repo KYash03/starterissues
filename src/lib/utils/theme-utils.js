@@ -21,19 +21,6 @@ function getBrowserTheme() {
     : DEFAULT_THEME;
 }
 
-export function getInitialTheme() {
-  if (typeof window === "undefined") return DEFAULT_THEME;
-  try {
-    return (
-      document.documentElement.getAttribute("data-theme") ||
-      localStorage.getItem(THEME_STORAGE_KEY) ||
-      getBrowserTheme()
-    );
-  } catch (e) {
-    return DEFAULT_THEME;
-  }
-}
-
 export function applyTheme(theme) {
   if (typeof document === "undefined") return;
   try {
@@ -42,12 +29,6 @@ export function applyTheme(theme) {
   } catch (e) {
     document.documentElement.setAttribute("data-theme", theme);
   }
-}
-
-export function toggleTheme(currentTheme) {
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
-  applyTheme(newTheme);
-  return newTheme;
 }
 
 export function createColorSchemeListener(callback) {

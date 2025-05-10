@@ -42,4 +42,4 @@ async function shutdownRedis() {
   });
 });
 
-module.exports = { getRedisClient, shutdownRedis };
+module.exports = { getRedisClient };

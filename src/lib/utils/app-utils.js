@@ -142,7 +142,6 @@ function getFriendlyErrorMessage(error) {
 module.exports = {
   formatDate,
   formatNumber,
-  formatValue,
   classNames,
   validateStarInputs,
   getStarsFilterLabel,
